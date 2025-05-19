@@ -31,7 +31,20 @@ class Player:
         self.mass = 1.0
         self.jump_force = 10.0
         
-   
+        self.color_states = [
+            [1.0, 0.0, 0.0], 
+            [0.8, 0.2, 0.2],  
+            [0.6, 0.4, 0.4], 
+            [0.4, 0.6, 0.6], 
+            [0.2, 0.8, 0.8],  
+            [0.0, 1.0, 1.0]   
+        ]
+        self.current_color = self.color_states[0].copy()
+        self.target_color = self.color_states[0].copy()
+        self.color_transition_speed = 4.0  
+        self.glow_intensity = 0.0
+        self.coins_collected = 0
+        
         self.base_move_speed = 12.0
         self.max_move_speed = 35.0
         self.acceleration_rate = 25.0
@@ -181,6 +194,10 @@ class Player:
             self.reset_position()
             return
 
+        for i in range(3):
+            if abs(self.current_color[i] - self.target_color[i]) > 0.01:
+                self.current_color[i] += (self.target_color[i] - self.current_color[i]) * self.color_transition_speed * dt
+
         self.acceleration[1] += self.gravity[1]
 
         self.velocity[0] += self.acceleration[0] * dt
@@ -200,21 +217,44 @@ class Player:
         self.position[1] += self.velocity[1] * dt
         self.position[2] += self.velocity[2] * dt
         
-
         self.handle_collision(platforms)
-
         self.acceleration = [0, 0, 0]
+
+    def collect_coin(self):
+        self.coins_collected += 1
+
+        if self.coins_collected <= 5:
+            self.target_color = self.color_states[self.coins_collected].copy()
+            self.glow_intensity = min(0.5, self.coins_collected * 0.1)
 
     def draw(self):
         glPushMatrix()
         glTranslatef(self.position[0], self.position[1], self.position[2])
         
-
-        glColor3f(0.2, 0.5, 1.0)
-        glMaterialfv(GL_FRONT, GL_AMBIENT, [0.2, 0.2, 0.2, 1.0])
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, [0.2, 0.5, 1.0, 1.0])
-        glMaterialfv(GL_FRONT, GL_SPECULAR, [1.0, 1.0, 1.0, 1.0])
-        glMaterialf(GL_FRONT, GL_SHININESS, 50.0)
+        glEnable(GL_LIGHTING)
         
-        glCallList(self.sphere_list)
+        ambient = [c * 0.3 for c in self.current_color]
+        diffuse = self.current_color.copy()
+        specular = [1.0, 1.0, 1.0, 1.0]
+        
+        if self.glow_intensity > 0:
+            emission = [c * self.glow_intensity for c in self.current_color]
+        else:
+            emission = [0.0, 0.0, 0.0, 1.0]
+            
+        glMaterialfv(GL_FRONT, GL_AMBIENT, ambient + [1.0])
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse + [1.0])
+        glMaterialfv(GL_FRONT, GL_SPECULAR, specular)
+        glMaterialfv(GL_FRONT, GL_EMISSION, emission)
+        glMaterialf(GL_FRONT, GL_SHININESS, 100.0)  
+        
+        glShadeModel(GL_SMOOTH)
+        
+        quad = gluNewQuadric()
+        gluQuadricNormals(quad, GLU_SMOOTH)
+        gluQuadricTexture(quad, GL_TRUE)
+        gluSphere(quad, self.radius, 64, 64)  
+        
+        glMaterialfv(GL_FRONT, GL_EMISSION, [0.0, 0.0, 0.0, 1.0])
+        
         glPopMatrix() 

@@ -325,6 +325,12 @@ class Game:
                 self.coins_collected = 0
                 self.total_coins = sum(1 for coin in self.coins if not coin.collected)
                 
+                # Reset player's coin collection state
+                self.player.coins_collected = 0
+                self.player.current_color = self.player.color_states[0].copy()
+                self.player.target_color = self.player.color_states[0].copy()
+                self.player.glow_intensity = 0.0
+                
                 return True
         return False
         
@@ -518,6 +524,7 @@ class Game:
             coin.update(0.016)
             if coin.check_collection(self.player.position):
                 self.coins_collected += 1
+                self.player.collect_coin()
         
         self.check_portal_collision()
 
